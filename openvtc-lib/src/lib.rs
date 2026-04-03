@@ -177,3 +177,82 @@ impl From<KeyType> for KeyPurpose {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{KeyPurpose, MessageType};
+    use crate::errors::OpenVTCError;
+    use std::convert::TryFrom;
+
+    fn all_message_types() -> [MessageType; 11] {
+        [
+            MessageType::RelationshipRequest,
+            MessageType::RelationshipRequestRejected,
+            MessageType::RelationshipRequestAccepted,
+            MessageType::RelationshipRequestFinalize,
+            MessageType::TrustPing,
+            MessageType::TrustPong,
+            MessageType::VRCRequest,
+            MessageType::VRCRequestRejected,
+            MessageType::VRCIssued,
+            MessageType::MaintainersListRequest,
+            MessageType::MaintainersListResponse,
+        ]
+    }
+
+    #[test]
+    fn message_type_string_roundtrip_matches_try_from() {
+        for ty in all_message_types() {
+            let url: String = ty.clone().into();
+            let parsed = MessageType::try_from(url.as_str()).unwrap_or_else(|e| {
+                panic!("try_from failed for variant url {url:?}: {e:?}");
+            });
+            let again: String = parsed.into();
+            assert_eq!(url, again, "From<MessageType> and TryFrom drift");
+        }
+    }
+
+    #[test]
+    fn message_type_try_from_unknown_yields_invalid_message() {
+        let unknown = "https://example.com/not-a-real-openvtc-type";
+        let err = MessageType::try_from(unknown).unwrap_err();
+        match err {
+            OpenVTCError::InvalidMessage(s) => assert_eq!(s, unknown),
+            other => panic!("expected InvalidMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn message_type_friendly_names() {
+        let cases = [
+            (MessageType::RelationshipRequest, "Relationship Request"),
+            (MessageType::RelationshipRequestRejected, "Relationship Request Rejected"),
+            (MessageType::RelationshipRequestAccepted, "Relationship Request Accepted"),
+            (MessageType::RelationshipRequestFinalize, "Relationship Request Finalize"),
+            (MessageType::TrustPing, "Trust Ping (Send)"),
+            (MessageType::TrustPong, "Trust Pong (Receive)"),
+            (MessageType::VRCRequest, "VRC Request"),
+            (MessageType::VRCRequestRejected, "VRC Request Rejected"),
+            (MessageType::VRCIssued, "VRC Issued"),
+            (
+                MessageType::MaintainersListRequest,
+                "List Known Maintainers (request)",
+            ),
+            (
+                MessageType::MaintainersListResponse,
+                "List Known Maintainers (response)",
+            ),
+        ];
+        for (ty, want) in cases {
+            assert_eq!(ty.friendly_name(), want);
+        }
+    }
+
+    #[test]
+    fn key_purpose_display() {
+        assert_eq!(KeyPurpose::Signing.to_string(), "Signing");
+        assert_eq!(KeyPurpose::Authentication.to_string(), "Authentication");
+        assert_eq!(KeyPurpose::Encryption.to_string(), "Encryption");
+        assert_eq!(KeyPurpose::Unknown.to_string(), "Unknown");
+    }
+}

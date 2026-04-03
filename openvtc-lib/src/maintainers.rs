@@ -78,3 +78,20 @@ pub async fn create_send_maintainers_list(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Maintainer;
+
+    #[test]
+    fn maintainer_json_roundtrip() {
+        let m = Maintainer {
+            alias: "alice".to_string(),
+            did: "did:webvh:QmExample:example.com".to_string(),
+        };
+        let json = serde_json::to_string(&m).expect("serialize Maintainer");
+        let back: Maintainer = serde_json::from_str(&json).expect("deserialize Maintainer");
+        assert_eq!(m.alias, back.alias);
+        assert_eq!(m.did, back.did);
+    }
+}
